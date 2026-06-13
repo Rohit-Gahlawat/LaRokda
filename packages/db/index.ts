@@ -1,5 +1,5 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { PrismaClient } from "./src/generated/prisma/client.js";
+import { PrismaClient } from "./src/generated/prisma/client";
 
 
 const globalForPrisma = global as unknown as {
@@ -16,4 +16,4 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 export default prisma;
 
 
-export * from "./src/generated/prisma/client.js"
+export * from "./src/generated/prisma/client"
