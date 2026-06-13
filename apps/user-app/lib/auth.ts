@@ -2,6 +2,8 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import { userSigninSchema, UserSigninType } from "@repo/zod";
 import db from "@repo/db"
+import { Session } from "next-auth";
+import { JWT } from "next-auth/jwt";
 
 export const authoptions = {
     providers: [
@@ -62,5 +64,22 @@ export const authoptions = {
 
             }
         })
-    ]
+    ],
+    secret: process.env.JWT_SECRET,
+    callbacks: {
+        async session({ token, session }: {
+            token: JWT,
+            session: Session
+        }) {
+            {
+                session.user = {
+                    ...session.user,
+                    id: token.sub
+                }
+                return session
+            }
+        }
+    }
+
+
 }

@@ -1,2 +1,2 @@
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcrypt"
+import bcrypt from "bcrypt";
