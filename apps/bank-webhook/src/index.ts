@@ -4,7 +4,7 @@ const app = express();
 app.use(express.json());
 
 
-app.post("", async (req, res) => {
+app.post("/hdfcwebhook", async (req, res) => {
 
     const paymentInfo = {
         token: req.body.token,

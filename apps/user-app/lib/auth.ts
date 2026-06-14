@@ -42,26 +42,29 @@ export const authoptions = {
                         name: user.name,
                         email: user.number
                     }
-                };
-                const hashedpassword = await bcrypt.hash(password, 10);
-                try {
-                    const newuser = await db.user.create({
-                        data: {
-                            number: phone,
-                            password: hashedpassword
-                        }
-                    });
-                    return {
-                        id: newuser.id,
-                        name: newuser.name,
-                        email: newuser.number
+                } else {
+                    const hashedpassword = await bcrypt.hash(password, 10);
+                    try {
+                        const newuser = await db.user.create({
+                            data: {
+                                number: phone,
+                                password: hashedpassword
+                            }
+                        });
+                        return {
+                            id: newuser.id,
+                            name: newuser.name,
+                            email: newuser.number
 
+                        }
+
+                    } catch (e) {
+                        console.log(e)
+                        return null
                     }
 
-                } catch (e) {
-                    console.log(e)
-                    return null
                 }
+
 
             }
         })
