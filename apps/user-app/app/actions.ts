@@ -55,6 +55,7 @@ export async function p2pMoney(number: string, amount: number) {
         throw new Error("user not found")
     }
     await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT * FROM "Balance" WHERE "userId" = ${fromUser} FOR UPDATE`;
         const fromBalance = await tx.balance.findFirst({
             where: {
                 userId: fromUser
@@ -83,6 +84,15 @@ export async function p2pMoney(number: string, amount: number) {
                 amount: {
                     increment: amount
                 }
+            }
+        })
+
+        await tx.p2P.create({
+            data: {
+                amount,
+                timestamp: new Date(),
+                fromUserId: fromUser,
+                toUserId: toUser.id
             }
         })
 
