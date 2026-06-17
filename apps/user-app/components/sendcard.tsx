@@ -4,6 +4,7 @@ import { Card } from "@repo/ui/card";
 import { Center } from "@repo/ui/center";
 import { TextInput } from "@repo/ui/textinput";
 import { useState } from "react";
+import { p2pMoney } from "@/app/actions"
 
 export function SendCard() {
     const [number, setNumber] = useState("");
@@ -20,7 +21,11 @@ export function SendCard() {
                         setAmount(value)
                     }} />
                     <div className="pt-4 flex justify-center">
-                        <Button onClick={() => {
+                        <Button onClick={async () => {
+                            try { await p2pMoney(number, Number(amount)) } catch (err) {
+                                alert(err instanceof Error ? err.message : "something went wrong")
+
+                            }
 
                         }}>Send</Button>
                     </div>
