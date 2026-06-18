@@ -40,35 +40,17 @@ export const authoptions = {
                     return {
                         id: user.id,
                         name: user.name,
-                        email: user.number
+                        number: user.number
                     }
-                } else {
-                    const hashedpassword = await bcrypt.hash(password, 10);
-                    try {
-                        const newuser = await db.user.create({
-                            data: {
-                                number: phone,
-                                password: hashedpassword
-                            }
-                        });
-                        return {
-                            id: newuser.id,
-                            name: newuser.name,
-                            email: newuser.number
-
-                        }
-
-                    } catch (e) {
-                        console.log(e)
-                        return null
-                    }
-
                 }
-
+                return null
 
             }
         })
     ],
+    pages: {
+        signIn: "/signin"
+    },
     secret: process.env.JWT_SECRET,
     callbacks: {
         async session({ token, session }: {
