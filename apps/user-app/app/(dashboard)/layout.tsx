@@ -6,14 +6,14 @@ export default function Layout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="flex min-h-screen bg-[#EFE9E3]">
+        <div className="flex min-h-screen bg-white">
             {/* Sidebar — sticky, collapses to an icon rail on mobile */}
             <aside
                 className="
           sticky top-16 z-10
           flex h-[calc(100vh-4rem)] shrink-0 flex-col
           w-16 md:w-60 lg:w-72
-          border-r border-[#D9CFC7] bg-[#F9F8F6]
+          border-r border-gray-200 bg-white
           px-2 md:px-4
           pt-6
         "
