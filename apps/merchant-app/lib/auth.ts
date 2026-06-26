@@ -1,9 +1,9 @@
 import Google from "next-auth/providers/google";
-import { Account, Session, User } from "next-auth";
-import { JWT } from "next-auth/jwt";
+import { NextAuthConfig } from "next-auth";
 import db from "@repo/db";
 
-export const authoptions = {
+
+export const authoptions: NextAuthConfig = {
     providers: [
         Google({
             clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -11,25 +11,32 @@ export const authoptions = {
         })
     ],
     secret: process.env.AUTH_SECRET,
+    pages: {
+        signIn: '/signin'
+    },
     callbacks: {
-        async signIn({ user, account }: {
-            user: User,
-            account: Account
-        }) {
-            if (account.providers !== "Google") {
+        async signIn({ user, account }) {
+
+            if (!account || account.provider !== "google") {
                 return false
             }
-            const merchent = await db.merchent.findUnique({
+            if (!user.email) return false;
+            const merchant = await db.merchant.findUnique({
                 where: {
-                    id: user.email
+                    email: user.email
                 }
             })
-            if (!merchent) {
-                await db.merchent.create({
+            if (!merchant) {
+                await db.merchant.create({
                     data: {
                         email: user.email!,
                         name: user.name!,
-                        auth_type: account.providers
+                        auth_type: "google",
+                        merchantBalance: {
+                            create: {
+                                amount: 0
+                            }
+                        }
                     }
                 })
             }
@@ -37,28 +44,23 @@ export const authoptions = {
 
             return true;
         },
-        async jwt({ token, user }: {
-            token: JWT,
-            user: User
-        }) {
-            if (user.email) {
-                const merchent = await db.merchent.findUnique({
+        async jwt({ token, user }) {
+            if (user?.email) {
+                const merchant = await db.merchant.findUnique({
                     where: {
                         email: user.email
                     }
                 });
-                token.merchentId = merchent?.id;
+                token.merchantId = merchant?.id.toString();
 
             }
             return token
         },
-        async session({ session, token }:
-            {
-                session: Session,
-                token: JWT
-            }
+        async session({ session, token }
         ) {
-            session?.user.id = token.merchentId;
+            if (token.merchantId) {
+                session.user.id = token.merchantId
+            }
             return session
         }
 
