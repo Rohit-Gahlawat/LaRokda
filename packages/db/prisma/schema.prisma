@@ -65,8 +65,8 @@ model P2P {
 }
 
 enum AuthType {
-  Google
-  Github
+  google
+  github
 }
 
 enum OnRampStatusType {
