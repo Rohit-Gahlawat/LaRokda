@@ -64,7 +64,38 @@ async function main() {
         },
     });
 
+    const merchant1 = await prisma.merchant.upsert({
+        where: { email: "coffeeshop@gmail.com" },
+        update: {},
+        create: {
+            email: "coffeeshop@gmail.com",
+            name: "Coffee Shop",
+            auth_type: "google",
+            merchantBalance: {
+                create: {
+                    amount: 1000,
+                },
+            },
+        },
+    });
+
+    const merchant2 = await prisma.merchant.upsert({
+        where: { email: "bookstore@gmail.com" },
+        update: {},
+        create: {
+            email: "bookstore@gmail.com",
+            name: "Book Store",
+            auth_type: "google",
+            merchantBalance: {
+                create: {
+                    amount: 1000,
+                },
+            },
+        },
+    });
+
     console.log({ alice, bob });
+    console.log({ merchant1, merchant2 });
 }
 
 main()
