@@ -53,6 +53,11 @@ export const authoptions = {
         signIn: "/signin"
     },
     secret: process.env.JWT_SECRET,
+    cookies: {
+        sessionToken: {
+            name: "user-app.session-token"
+        }
+    },
     callbacks: {
         async session({ token, session }: {
             token: JWT,
