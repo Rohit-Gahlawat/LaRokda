@@ -14,6 +14,11 @@ export const authoptions: NextAuthConfig = {
     pages: {
         signIn: '/signin'
     },
+    cookies: {
+        sessionToken: {
+            name: "merchant-app.session-token"
+        }
+    },
     callbacks: {
         async signIn({ user, account }) {
 

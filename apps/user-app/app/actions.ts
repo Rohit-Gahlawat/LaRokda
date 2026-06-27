@@ -9,6 +9,7 @@ import bcrypt from "bcrypt"
 import { AuthError } from "next-auth";
 
 
+
 export async function handleSignOut() {
     "use server";
     await signOut();
@@ -109,7 +110,7 @@ export async function p2pMoney(number: string, amount: number) {
                     increment: amount
                 }
             }
-        })
+        });
 
         await tx.p2P.create({
             data: {
@@ -118,7 +119,9 @@ export async function p2pMoney(number: string, amount: number) {
                 fromUserId: fromUser,
                 toUserId: toUser.id
             }
-        })
+        });
+
+
 
     })
 
@@ -145,7 +148,13 @@ export async function SignUp({ phone, password }: UserSigninType) {
         await db.user.create({
             data: {
                 number: parsed.data.phone,
-                password: hashedpassword
+                password: hashedpassword,
+                Balance: {
+                    create: {
+                        amount: 0,
+                        locked: 0
+                    }
+                }
             }
         })
 
@@ -175,4 +184,120 @@ export async function SignUp({ phone, password }: UserSigninType) {
         success: true
     }
 
+}
+
+
+export async function sendMerchant(id: number, amount: number) {
+
+    const session = await auth();
+    const fromUser = session?.user?.id;
+
+    if (!fromUser) {
+        throw new Error("you are not logged in")
+    }
+
+    const toUser = await db.merchant.findFirst({
+        where: {
+            id: id
+        }
+    })
+    if (!toUser) {
+        throw new Error("user not found")
+    }
+
+    await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT * FROM "Balance" WHERE "userId" = ${fromUser} FOR UPDATE`;
+        const fromBalance = await tx.balance.findFirst({
+            where: {
+                userId: fromUser
+            }
+        });
+        if (!fromBalance || fromBalance?.amount < amount) {
+            throw new Error("Insufficient Balance")
+        };
+
+        await tx.balance.update({
+            where: {
+                userId: fromUser
+            },
+            data: {
+                amount: {
+                    decrement: amount
+                }
+            }
+        });
+
+        await tx.merchantBalance.update({
+            where: {
+                merchantId: id
+            },
+            data: {
+                amount: {
+                    increment: amount
+                }
+            }
+        });
+        await tx.merchantTransaction.create({
+            data: {
+                amount,
+                timestamp: new Date(),
+                fromUserId: fromUser,
+                toUserId: toUser.id
+            }
+        })
+
+    })
+
+
+}
+
+
+export async function handleWithdrawals(amount: number, provider: string) {
+    const session = await auth();
+    const userId = session?.user?.id
+    if (!userId) {
+        throw new Error("you are not logged in")
+    };
+    const randomID = randomUUID();
+    const token = `ID_${Date.now()}_${randomID}`;
+
+
+    try {
+        const result = await db.balance.updateMany({
+            where: {
+                userId: userId,
+                amount: {
+                    gte: amount
+                }
+            },
+            data: {
+                amount: {
+                    decrement: amount
+                },
+                locked: {
+                    increment: amount
+                }
+
+            }
+
+        })
+        if (result.count === 0) {
+            throw new Error("Insufficient Balance")
+        }
+
+    } catch (e) {
+        return alert(e instanceof Error ? e.message : "something went wrong")
+    }
+
+    await db.userWithdrawal.create({
+        data: {
+            status: "Processing",
+            startTime: new Date(),
+            token: token,
+            userId: userId,
+            provider: provider,
+            amount: amount
+        }
+    });
+    return token
 }
