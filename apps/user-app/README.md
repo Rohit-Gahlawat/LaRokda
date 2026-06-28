@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# user-app
 
-## Getting Started
+The customer‑facing wallet. This is where a person signs in, adds money, sends money, pays merchants, withdraws to their bank, and views their transaction history.
 
-First, run the development server:
+Built with **Next.js 16 (App Router)**, **React 19**, **NextAuth v5**, and **Tailwind CSS v4**. Runs on **port 3001**.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Features
+
+- **Auth** — sign up / sign in with a phone number and password. Passwords are hashed with bcrypt and sessions use NextAuth v5 (JWT).
+- **Add money** — start a top‑up from a bank (confirmed later by the `bank-webhook` service).
+- **Send money (P2P)** — pay another user by their mobile number.
+- **Pay a merchant** — pay a merchant by their id.
+- **Withdraw** — move money from the wallet back to a bank account.
+- **Transactions** — history with a toggle for **Bank** (top‑ups + withdrawals), **Personal** (P2P), and **Merchant** payments.
+- **Good UX** — button spinners while requests run, success/error banners, and a page‑level loader while navigating.
+
+---
+
+## How money logic works here
+
+- Amounts are handled in **paise**: user input is multiplied by 100 before saving, and divided by 100 when shown. This avoids decimal rounding bugs.
+- Transfers run inside a Prisma `$transaction` with a row lock (`SELECT … FOR UPDATE`) so balances can't be double‑spent.
+- Withdrawals reserve money into a `locked` balance first, then the `bank-sweeper` settles them.
+
+The actual business logic lives in [`app/actions.ts`](app/actions.ts) (`addMoney`, `p2pMoney`, `sendMerchant`, `handleWithdrawals`, auth helpers).
+
+---
+
+## Project structure
+
+```
+app/
+├── (dashboard)/            # signed-in area (shares a sidebar layout + loading spinner)
+│   ├── dashboard/          # home: balance, quick actions
+│   ├── transfer/           # add money / withdraw + recent bank activity
+│   ├── send/               # send money / pay a merchant
+│   ├── transactions/       # history with Bank / Personal / Merchant toggle
+│   ├── p2p/                # peer-to-peer send
+│   ├── layout.tsx          # sidebar + appbar layout
+│   └── loading.tsx         # shown while navigating between pages
+├── signin/ , signup/       # auth pages (outside the dashboard shell)
+├── api/auth/[...nextauth]/ # NextAuth route handler
+├── actions.ts              # server actions (all money + auth logic)
+├── layout.tsx              # root layout (appbar)
+└── provider.tsx            # client providers
+
+components/                 # AddMoneyCard, sendcard, BalanceCard,
+                            # OnRampTransaction, P2PTransactions,
+                            # MerchantTransactions, TransactionsToggle …
+lib/auth.ts                 # NextAuth credentials config
+auth.ts                     # exports handlers, signIn, signOut, auth
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Running it
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load Inter, a custom Google Font.
+```bash
+# from the repo root
+npm run dev
+# or just this app
+cd apps/user-app && npm run dev
+```
+Open http://localhost:3001.
 
-## Learn More
+## Environment variables
 
-To learn more about Next.js, take a look at the following resources:
+Create `apps/user-app/.env` with:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `DATABASE_URL` — pooled Postgres (Neon) connection
+- `DIRECT_DATABASE_URL` — direct Postgres connection
+- `JWT_SECRET` — secret for NextAuth JWT sessions
+- `NEXTAUTH_URL` — base URL of the app (e.g. `http://localhost:3001`)
