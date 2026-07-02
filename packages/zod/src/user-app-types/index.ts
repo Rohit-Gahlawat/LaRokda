@@ -5,3 +5,18 @@ export const userSigninSchema = z.object({
     password: z.string().min(8).max(50)
 })
 export type UserSigninType = z.infer<typeof userSigninSchema>
+
+
+
+export const userWebhookSchema = z.object({
+    token: z.string(),
+    userId: z.string(),
+    amount: z.string(),
+    status: z.enum(["Success", "Failed"])
+});
+export const merchantWebhookSchema = z.object({
+    token: z.string(),
+    userId: z.string(),
+    amount: z.string(),
+    status: z.enum(["Success", "Failed"])
+});
