@@ -4,12 +4,14 @@ import type { ReactNode } from "react";
 
 export function TransactionsToggle({
     bank,
-    p2p
+    p2p,
+    merchant
 }: {
     bank: ReactNode;
     p2p: ReactNode;
+    merchant: ReactNode;
 }) {
-    const [tab, setTab] = useState<"bank" | "p2p">("bank");
+    const [tab, setTab] = useState<"bank" | "p2p" | "merchant">("bank");
     const base = "rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-200";
     const active = "bg-white text-[#FF0052] shadow-sm";
     const inactive = "text-stone-500 hover:text-stone-700";
@@ -28,9 +30,16 @@ export function TransactionsToggle({
                 onClick={() => setTab("p2p")}
                 className={`${base} ${tab === "p2p" ? active : inactive}`}
             >
-                P2P Transfers
+                Personal
+            </button>
+            <button
+                type="button"
+                onClick={() => setTab("merchant")}
+                className={`${base} ${tab === "merchant" ? active : inactive}`}
+            >
+                Merchant
             </button>
         </div>
-        <div>{tab === "bank" ? bank : p2p}</div>
+        <div>{tab === "bank" ? bank : tab === "p2p" ? p2p : merchant}</div>
     </div>
 }
