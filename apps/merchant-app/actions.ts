@@ -12,6 +12,10 @@ export async function handleSignOut() {
 }
 
 export async function handleWithdrawals(amount: number, provider: string) {
+    if (!(amount > 0)) {
+        throw new Error("Please enter an amount greater than zero")
+    }
+    const amountInPaise = Math.round(amount * 100);
     const session = await auth();
     const userId = session?.user?.id
     if (!userId) {
@@ -26,15 +30,15 @@ export async function handleWithdrawals(amount: number, provider: string) {
             where: {
                 merchantId: Number(userId),
                 amount: {
-                    gte: amount
+                    gte: amountInPaise
                 }
             },
             data: {
                 amount: {
-                    decrement: amount
+                    decrement: amountInPaise
                 },
                 locked: {
-                    increment: amount
+                    increment: amountInPaise
                 }
 
             }
@@ -45,7 +49,7 @@ export async function handleWithdrawals(amount: number, provider: string) {
         }
 
     } catch (e) {
-        return alert(e instanceof Error ? e.message : "something went wrong")
+        throw new Error(e instanceof Error ? e.message : "something went wrong")
     }
 
     await db.merchantWithdrawal.create({
@@ -55,7 +59,7 @@ export async function handleWithdrawals(amount: number, provider: string) {
             token: token,
             userId: Number(userId),
             provider: provider,
-            amount: amount
+            amount: amountInPaise
         }
     });
     return token
