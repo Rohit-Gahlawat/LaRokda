@@ -1,6 +1,6 @@
-# LaRokda — a digital wallet & payments platform
+# PayPilot — a digital wallet & payments platform
 
-LaRokda is a Paytm‑style digital wallet built as a **Turborepo monorepo**. People can add money from their bank, send money to friends by phone number, pay merchants, and withdraw money back to their bank. Merchants get their own portal to accept payments and settle them to their bank account.
+PayPilot is a Paytm‑style digital wallet built as a **Turborepo monorepo**. People can add money from their bank, send money to friends by phone number, pay merchants, and withdraw money back to their bank. Merchants get their own portal to accept payments and settle them to their bank account.
 
 It is a full money‑movement system: money comes **in** from a bank, moves **around** between users and merchants, and goes back **out** to a bank — and the whole thing is built so two people can never spend the same balance twice.
 
@@ -88,7 +88,7 @@ It is a full money‑movement system: money comes **in** from a bank, moves **ar
 ## Repository structure
 
 ```
-LaRokda/
+PayPilot/
 ├── apps/
 │   ├── user-app/        # Next.js wallet app for end users (port 3001)
 │   ├── merchant-app/    # Next.js portal for merchants (port 3000)

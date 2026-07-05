@@ -17,7 +17,7 @@ export default async function Home() {
   return (
     <div>
 
-      <Button label="hello from buttons" />
+
     </div>
   );
 }
