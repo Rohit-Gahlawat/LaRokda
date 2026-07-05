@@ -1,10 +1,12 @@
-"use client"
-import { useBalance } from "@repo/store";
 
-export default function Home() {
-  const value = useBalance();
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+
+export default async function Home() {
+  const session = await auth();
+  session?.user.id ? redirect("/dashboard") : redirect("/api/auth/signin")
   return (<div>
-    your balance is {value}
+
   </div>
 
   );

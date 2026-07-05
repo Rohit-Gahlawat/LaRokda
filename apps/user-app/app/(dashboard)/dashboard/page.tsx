@@ -14,7 +14,7 @@ export default async function DashboardPage() {
             <div className="flex flex-col items-center gap-8 md:flex-row md:justify-between">
                 <div className="max-w-md text-center md:text-left">
                     <span className="inline-flex items-center rounded-full bg-[#FF0052]/10 px-3 py-1 text-xs font-medium text-[#FF0052]">
-                        LaRokda wallet
+                        PayPilot wallet
                     </span>
                     <h1 className="mt-3 text-3xl font-bold tracking-tight text-stone-800 sm:text-4xl">
                         Dashboard
