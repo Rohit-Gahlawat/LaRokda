@@ -22,7 +22,7 @@ export default function Layout({
                     <SidebarItem href={"/dashboard"} icon={<HomeIcon />} title="Home" />
                     <SidebarItem href={"/transfer"} icon={<TransferIcon />} title="Transfer" />
                     <SidebarItem href={"/transactions"} icon={<TransactionsIcon />} title="Transactions" />
-                    <SidebarItem href={"/p2p"} icon={<P2PTransferIcon />} title="P2P Transfer" />
+                    <SidebarItem href={"/send"} icon={<P2PTransferIcon />} title="Send Money" />
                 </nav>
             </aside>
 
