@@ -63,6 +63,8 @@ npm run db:studio     # open Prisma Studio (visual DB browser)
 npx prisma db seed    # run the seed script
 ```
 
+> There's also a `postinstall` script that runs `prisma generate` automatically every time `npm install` runs anywhere in the repo. The generated client isn't committed to git, so this is what makes sure it always exists after a fresh install (including on a deploy).
+
 ## Environment variables
 
 Create `packages/db/.env` with:

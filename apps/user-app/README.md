@@ -9,7 +9,7 @@ Built with **Next.js 16 (App Router)**, **React 19**, **NextAuth v5**, and **Tai
 ## Features
 
 - **Auth** — sign up / sign in with a phone number and password. Passwords are hashed with bcrypt and sessions use NextAuth v5 (JWT).
-- **Add money** — start a top‑up from a bank (confirmed later by the `bank-webhook` service).
+- **Add money** — start a top‑up from a bank; the request is shown as "processing" right away and the wallet updates a little later once the bank (in development, the dummy `bank-server`) confirms it through `bank-webhook`.
 - **Send money (P2P)** — pay another user by their mobile number.
 - **Pay a merchant** — pay a merchant by their id.
 - **Withdraw** — move money from the wallet back to a bank account.

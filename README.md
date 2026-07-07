@@ -27,13 +27,15 @@ It is a full money‑movement system: money comes **in** from a bank, moves **ar
         │  bank → us          │        │  us → bank           │
         └─────────────────────┘        └──────────────────────┘
                    ▲                              │
-                   └──────────  Bank APIs  ───────┘
-                        (HDFC / Axis / SBI …)
+                   └──────────  bank-server  ─────┘
+                     (dummy bank, stands in
+                      for a real bank API)
 ```
 
-- **Money in (on‑ramp):** the user starts an "Add Money", and the bank later calls our **bank-webhook** to confirm and credit the wallet.
-- **Money out (withdrawal / off‑ramp):** the user/merchant requests a withdrawal, the amount is reserved, and the **bank-sweeper** worker pushes it to the bank.
+- **Money in (on‑ramp):** the user starts an "Add Money", the request goes to **bank-server** (our stand‑in for a real bank), which waits a bit and then calls our **bank-webhook** to confirm and credit the wallet.
+- **Money out (withdrawal / off‑ramp):** the user/merchant requests a withdrawal, the amount is reserved, and the **bank-sweeper** worker sends it to **bank-server**, which later calls back to confirm it or fail it.
 - **Money around:** user → user and user → merchant transfers happen instantly inside the database.
+- There's no real bank connected yet, so **bank-server** plays that part: it takes a request, waits a random amount of time, and randomly says success or failure — so the rest of the system can be built and tested as if a real bank were on the other end.
 
 ---
 
@@ -56,6 +58,7 @@ It is a full money‑movement system: money comes **in** from a bank, moves **ar
 **Behind the scenes**
 - **bank-webhook** — receives confirmations from the bank and credits wallets.
 - **bank-sweeper** — a background worker that picks up pending withdrawals and sends them to the bank.
+- **bank-server** — a dummy bank used for development. It answers add‑money and withdrawal requests after a random delay, with a random success or failure, so the whole money‑in/money‑out flow can be tested without a real bank.
 
 ---
 
@@ -77,7 +80,7 @@ It is a full money‑movement system: money comes **in** from a bank, moves **ar
 | Monorepo | Turborepo, npm workspaces |
 | Frontend | Next.js 16 (App Router), React 19, Tailwind CSS v4 |
 | Auth | NextAuth v5 — credentials (users), Google OAuth (merchants) |
-| Backend services | Express 5 (bank-webhook), Node + tsx worker (bank-sweeper) |
+| Backend services | Express 5 (bank-webhook, bank-server), Node + tsx worker (bank-sweeper) |
 | Database | PostgreSQL (Neon) via Prisma 7 + `@prisma/adapter-neon` |
 | Validation | Zod |
 | Client state | Jotai |
@@ -93,7 +96,8 @@ PayPilot/
 │   ├── user-app/        # Next.js wallet app for end users (port 3001)
 │   ├── merchant-app/    # Next.js portal for merchants (port 3000)
 │   ├── bank-webhook/    # Express service: bank → us (money in)
-│   └── bank-sweeper/    # Node worker: us → bank (money out)
+│   ├── bank-sweeper/    # Node worker: us → bank (money out)
+│   └── bank-server/     # dummy bank used for development
 └── packages/
     ├── db/              # Prisma schema, client, migrations, seed
     ├── ui/              # Shared React UI components (Tailwind)
@@ -110,15 +114,17 @@ Each app and package has its own `README.md` with more detail.
 ## How the money flows
 
 **1. Add money (on‑ramp)**
-1. User enters an amount → `addMoney` creates an `OnRampTransaction` with status `Processing`.
-2. The bank later calls **bank-webhook** (`POST /hdfcwebhook`) which, in one atomic `$transaction`, credits the user's `Balance` and marks the transaction `Success`.
+1. User enters an amount → `addMoney` creates an `OnRampTransaction` with status `Processing`, and pings **bank-server** to say "a payment is on its way."
+2. **bank-server** waits a random few seconds, then calls **bank-webhook** (`POST /hdfcwebhook`) with a random `Success` or `Failed`. In one atomic `$transaction`, this either credits the user's `Balance` and marks the transaction `Success`, or just marks it `Failed`.
+3. The page shows a "processing" message right away and a success/error banner once the request is sent — the actual balance updates a little later, once the bank confirms.
 
 **2. Send money (P2P) / pay a merchant**
 - Inside a `$transaction`: lock the sender's balance, check funds, decrement sender, increment receiver, and write a `P2P` (or `MerchantTransaction`) record — all or nothing.
 
 **3. Withdraw money (off‑ramp)**
 1. Request reserves the funds atomically (`amount -= x`, `locked += x`) and creates a `UserWithdrawal` / `MerchantWithdrawal` with status `Processing`.
-2. **bank-sweeper** runs on a loop, finds `Processing` withdrawals, and (in production) calls the bank to pay out — then clears the locked amount on success or refunds on failure.
+2. **bank-sweeper** runs on a loop, finds `Processing` withdrawals, and sends each one to **bank-server**.
+3. **bank-server** waits a random few seconds, then calls back **bank-webhook** (`POST /user/withdrawal` or `/merchant/withdrawal`) with a random `Success` or `Failed` — which clears the locked amount on success, or refunds it (money goes back to `amount`) on failure.
 
 ---
 
@@ -142,9 +148,10 @@ Create a `.env` in each workspace that needs one. The variable **names** are:
 - `apps/user-app/.env` — `DATABASE_URL`, `DIRECT_DATABASE_URL`, `JWT_SECRET`, `NEXTAUTH_URL`
 - `apps/merchant-app/.env` — `DATABASE_URL`, `DIRECT_DATABASE_URL`, `AUTH_SECRET`, `NEXT_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET`
 - `apps/bank-webhook/.env` — `DATABASE_URL`, `DIRECT_DATABASE_URL`
-- `apps/bank-sweeper/.env` — `DATABASE_URL`, `DIRECT_DATABASE_URL`
+- `apps/bank-sweeper/.env` — `DATABASE_URL`, `DIRECT_DATABASE_URL`, `BANK_SERVER_URL`
+- `apps/bank-server/.env` — `BANK_WEBHOOK_URL`, `BANK_MIN_DELAY_MS`, `BANK_MAX_DELAY_MS`, `BANK_FAILURE_RATE`
 
-(`DATABASE_URL` is the pooled Neon connection; `DIRECT_DATABASE_URL` is the direct one used for migrations and seeding.)
+(`DATABASE_URL` is the pooled Neon connection; `DIRECT_DATABASE_URL` is the direct one used for migrations and seeding. `bank-server` needs no database — it's a stateless dummy bank.)
 
 **3. Set up the database**
 ```bash
@@ -158,12 +165,13 @@ npx prisma db seed         # add sample users + merchants
 # from the repo root
 npm run dev
 ```
-This starts every app via Turborepo. The webhook and sweeper can also be started on their own from their folders.
+This starts every app via Turborepo. The webhook, sweeper, and dummy bank can also be started on their own from their folders.
 
 Default URLs:
 - User app → http://localhost:3001
 - Merchant app → http://localhost:3000
 - bank-webhook → http://localhost:3003
+- bank-server (dummy bank) → http://localhost:3004
 
 ---
 

@@ -1,8 +1,8 @@
 # bank-webhook
 
-A small **Express** service that handles **money coming in** (the on‑ramp). When a user adds money, the bank calls this service to confirm the payment, and the service credits the user's wallet.
+A small **Express** service that plays the "bank calling us back" side of every money movement. It has three endpoints, one for add‑money and one each for the two kinds of withdrawal, and it's the only place that actually updates balances based on what a bank says happened.
 
-This is the "**bank → us**" direction. (The opposite direction, "us → bank", is handled by `bank-sweeper`.)
+This is the "**bank → us**" direction. In development, the calls come from our own dummy bank, `bank-server` — in production, a real bank would call these same endpoints. (The opposite direction, "us → bank", is handled by `bank-sweeper`.)
 
 Runs on **port 3003**.
 
@@ -10,19 +10,22 @@ Runs on **port 3003**.
 
 ## What it does
 
-- Exposes `POST /hdfcwebhook`.
-- On a request it runs a single Prisma **`$transaction`** that:
-  1. increases the user's `Balance`, and
-  2. marks the matching `OnRampTransaction` as `Success`.
+**`POST /hdfcwebhook`** — confirms an add‑money (on‑ramp) request.
+- Runs a single Prisma **`$transaction`**: if the bank says `Success`, it increases the user's `Balance` and marks the `OnRampTransaction` as `Success`; if `Failed`, it just marks the transaction `Failed` (no money moves).
 
-Doing both in one transaction means the balance and the transaction status always stay in sync — you never credit money without recording it, or vice‑versa.
+**`POST /user/withdrawal`** and **`POST /merchant/withdrawal`** — confirm a withdrawal.
+- On `Success`, it clears the reserved `locked` amount (the money has left the wallet for good).
+- On `Failed`, it **refunds** the withdrawal — `locked` goes down and `amount` goes back up, as if the withdrawal never happened.
+- Both validate the incoming payload with a Zod schema (`userWebhookSchema` / `merchantWebhookSchema`) before touching the database.
+
+All three routes only act on a row that's still `Processing` — if it's already been settled, the request is rejected as "already completed." This stops the same confirmation from being applied twice.
 
 Example request:
 
 ```bash
 curl -X POST http://localhost:3003/hdfcwebhook \
   -H "Content-Type: application/json" \
-  -d '{ "token": "<onramp-token>", "user_identifier": "<userId>", "amount": 10000 }'
+  -d '{ "token": "<onramp-token>", "user_identifier": "<userId>", "amount": 10000, "status": "Success" }'
 ```
 
 > Amounts are in **paise** (₹100 = `10000`) to match how the rest of the system stores money.

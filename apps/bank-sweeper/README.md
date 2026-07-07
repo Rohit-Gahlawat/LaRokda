@@ -11,11 +11,13 @@ This is the "**us → bank**" direction. (The opposite direction, "bank → us",
 Every 5 seconds it:
 1. Finds `UserWithdrawal` rows with status `Processing` (`sweepUser`).
 2. Finds `MerchantWithdrawal` rows with status `Processing` (`sweepMerchant`).
-3. (In production) calls the bank's payout API for each, then marks the row `Success` and clears the reserved `locked` amount — or `Failed` and refunds it.
+3. Sends each one to the bank's payout API (`bank-server` in development, a real bank in production) and moves on — it doesn't wait around for the money to actually settle.
 
-The call to the real bank API is currently a placeholder (commented out), so the worker is ready to plug a real bank in without changing the rest of the system.
+The bank doesn't reply straight away. It confirms later, in the background, by calling `bank-webhook` — which is what actually marks the row `Success` (and clears the `locked` amount) or `Failed` (and refunds it). So this worker's job is only to **hand off** pending withdrawals, not to wait for the outcome.
 
-> The withdrawal record already carries a unique `token`, which is meant to be sent to the bank as an **idempotency key** so a retry can never pay the same withdrawal twice.
+Because the loop runs every 5 seconds but a payout can take longer than that to get a reply, the sweeper keeps a small in‑memory set of tokens it has already sent — so the same withdrawal isn't handed to the bank twice while it's still waiting on a reply.
+
+> The withdrawal record already carries a unique `token`, which is sent to the bank as an **idempotency key** so a retry can never pay the same withdrawal twice.
 
 ---
 
@@ -44,3 +46,4 @@ Create `apps/bank-sweeper/.env` with:
 
 - `DATABASE_URL` — pooled Postgres (Neon) connection
 - `DIRECT_DATABASE_URL` — direct Postgres connection
+- `BANK_SERVER_URL` — where the dummy bank is running (defaults to `http://localhost:3004`)
