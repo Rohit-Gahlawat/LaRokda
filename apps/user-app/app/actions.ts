@@ -63,6 +63,23 @@ export async function addMoney(amount: number, provider: string) {
 
             }
         })
+
+        try {
+            await fetch(`${process.env.BANK_SERVER_URL || "http://localhost:3004"}/onramp`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    token: token,
+                    user_identifier: session.user.id,
+                    amount: amountInPaise
+                })
+            })
+        } catch (e) {
+            console.log(e);
+        }
+
         return token;
     }
 }
