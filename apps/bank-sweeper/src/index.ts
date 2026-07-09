@@ -1,5 +1,9 @@
 import "dotenv/config";
 import db from "@repo/db";
+
+const BANK_SERVER_URL = process.env.BANK_SERVER_URL || "http://localhost:3004";
+const dispatched = new Set<string>();
+
 async function sweepUser() {
 
     const pending = await db.userWithdrawal.findMany({
@@ -8,18 +12,29 @@ async function sweepUser() {
         },
     });
 
-    // for (const txn of pending) {
-    //     await fetch("bank-api", {
-    //         method: "POST",
-    //         headers: {
-    //             "Content-Type": "application/json",
-    //         },
-    //         body: JSON.stringify({
-    //             token: txn.token,
-    //             amount: txn.amount,
-    //         }),
-    //     });
-    // }
+    for (const txn of pending) {
+        if (dispatched.has(txn.token)) {
+            continue;
+        }
+        dispatched.add(txn.token);
+        try {
+            await fetch(`${BANK_SERVER_URL}/payout`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    token: txn.token,
+                    user_identifier: String(txn.userId),
+                    amount: String(txn.amount),
+                    kind: "user",
+                }),
+            });
+        } catch (e) {
+            console.log(e);
+            dispatched.delete(txn.token);
+        }
+    }
 
 }
 async function sweepMerchant() {
@@ -30,18 +45,29 @@ async function sweepMerchant() {
         },
     });
 
-    // for (const txn of pending) {
-    //     await fetch("bank-api", {
-    //         method: "POST",
-    //         headers: {
-    //             "Content-Type": "application/json",
-    //         },
-    //         body: JSON.stringify({
-    //             token: txn.token,
-    //             amount: txn.amount,
-    //         }),
-    //     });
-    // }
+    for (const txn of pending) {
+        if (dispatched.has(txn.token)) {
+            continue;
+        }
+        dispatched.add(txn.token);
+        try {
+            await fetch(`${BANK_SERVER_URL}/payout`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    token: txn.token,
+                    user_identifier: String(txn.userId),
+                    amount: String(txn.amount),
+                    kind: "merchant",
+                }),
+            });
+        } catch (e) {
+            console.log(e);
+            dispatched.delete(txn.token);
+        }
+    }
 
 }
 
