@@ -15,7 +15,8 @@ app.post("/hdfcwebhook", async (req, res) => {
     const paymentInfo = {
         token: req.body.token,
         userId: req.body.user_identifier,
-        amount: req.body.amount
+        amount: req.body.amount,
+        status: req.body.status
     }
 
 
@@ -27,26 +28,25 @@ app.post("/hdfcwebhook", async (req, res) => {
                     status: "Processing"
                 },
                 data: {
-                    status: "Success",
+                    status: paymentInfo.status
                 }
             });
             if (claim.count === 0) {
                 throw new Error("transaction already completed")
             }
 
-            await txn.$transaction([
-                txn.balance.update({
+            if (paymentInfo.status === "Success") {
+                await txn.balance.update({
                     where: {
                         userId: (paymentInfo.userId)
                     },
                     data: {
                         amount: {
-
                             increment: Number(paymentInfo.amount)
                         }
                     }
-                })
-            ]);
+                });
+            }
 
         })
         res.json({
