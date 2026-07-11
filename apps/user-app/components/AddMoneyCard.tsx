@@ -4,9 +4,9 @@ import { Button } from "@repo/ui/button";
 import { Card } from "@repo/ui/card";
 import { Select } from "@repo/ui/select";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { TextInput } from "@repo/ui/textinput";
 import { addMoney, handleWithdrawals } from "@/app/actions";
-
 
 
 
@@ -23,15 +23,40 @@ const SUPPORTED_BANKS = [{
 
 
 export const AddMoney = () => {
-    const [redirectUrl, setRedirectUrl] = useState(SUPPORTED_BANKS[0]?.redirectUrl);
+    const router = useRouter();
     const [provider, setProvider] = useState("");
     const [amount, setAmount] = useState(0);
     const [mode, setMode] = useState<"add" | "withdraw">("add");
     const [loading, setLoading] = useState(false);
+    const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
     const tabBase = "flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200";
     const tabActive = "bg-white text-[#FF0052] shadow-sm";
     const tabInactive = "text-stone-500 hover:text-stone-700";
+
+    async function handleClick() {
+        if (loading) return;
+        if (!(amount > 0)) {
+            setFeedback({ type: "error", message: "Please enter an amount greater than zero" });
+            return;
+        }
+        setFeedback(null);
+        setLoading(true);
+        try {
+            if (mode === "add") {
+                await addMoney(amount, provider);
+                setFeedback({ type: "success", message: "Payment request created. Your wallet will be updated shortly after bank confirmation." });
+            } else {
+                await handleWithdrawals(amount, provider);
+                setFeedback({ type: "success", message: "Withdrawal requested — it will be settled to your bank shortly." });
+            }
+            setTimeout(() => router.refresh(), 1500);
+        } catch (e) {
+            setFeedback({ type: "error", message: e instanceof Error ? e.message : "something went wrong" });
+        } finally {
+            setLoading(false);
+        }
+    }
 
     return <Card title={mode === "add" ? "Add Money" : "Withdraw"}>
         <div className="w-full">
@@ -52,6 +77,16 @@ export const AddMoney = () => {
                 </button>
             </div>
 
+            {loading ? (
+                <div className="mb-4 inline-flex w-full items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                    <Spinner />Processing your request…
+                </div>
+            ) : feedback && (
+                <div className={`mb-4 rounded-lg px-3 py-2 text-sm ${feedback.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                    {feedback.message}
+                </div>
+            )}
+
             <TextInput label={"Amount"} placeholder={"Amount"} onChange={(t) => {
                 setAmount(Number(t));
 
@@ -60,47 +95,15 @@ export const AddMoney = () => {
                 Bank
             </div>
             <Select onSelect={(value) => {
-                setRedirectUrl(SUPPORTED_BANKS.find(x => x.name === value)?.redirectUrl || "")
                 setProvider(value)
             }} options={SUPPORTED_BANKS.map(x => ({
                 key: x.name,
                 value: x.name
             }))} />
             <div className="pt-6">
-                {mode === "add" ? (
-                    <Button onClick={async () => {
-                        if (!(amount > 0)) {
-                            return alert("Please enter an amount greater than zero")
-                        }
-                        setLoading(true)
-                        try {
-                            await addMoney(amount, provider)
-                        } catch (e) {
-                            setLoading(false)
-                            if (e instanceof Error) {
-                                return alert(e.message)
-                            }
-                        }
-                        window.location.href = redirectUrl || ""
-                    }}>
-                        {loading ? <span className="inline-flex items-center gap-2"><Spinner />Processing…</span> : "Add Money"}
-                    </Button>
-                ) : (
-                    <Button onClick={async () => {
-                        if (!(amount > 0)) {
-                            return alert("Please enter an amount greater than zero")
-                        }
-                        setLoading(true)
-                        try { await handleWithdrawals(amount, provider) }
-                        catch (e) {
-                            setLoading(false)
-                            alert(e instanceof Error ? e.message : "something went wrong")
-                        }
-                        window.location.href = redirectUrl || ""
-                    }}>
-                        {loading ? <span className="inline-flex items-center gap-2"><Spinner />Processing…</span> : "Withdraw"}
-                    </Button>
-                )}
+                <Button onClick={handleClick}>
+                    {loading ? <span className="inline-flex items-center gap-2"><Spinner />Processing…</span> : (mode === "add" ? "Add Money" : "Withdraw")}
+                </Button>
             </div>
         </div>
     </Card>
